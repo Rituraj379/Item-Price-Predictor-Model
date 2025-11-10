@@ -27,85 +27,47 @@ We approached the pricing challenge as a multimodal regression problem using bot
 
 ### 3.1 Architecture Overview
 
-+--------------------------+              +--------------------------+
-|        Text Data         |              |        Image Data        |
-|   (catalog_content)      |              |                          |
-+--------------------------+              +--------------------------+
-               |                                   |
-               v                                   v
-+--------------------------+              +--------------------------+
-|     1. Data Cleaning     |              | 11. Image Preprocessing  |
-|   (Nulls, Duplicates)    |              |     (Resize 256x256)     |
-+--------------------------+              +--------------------------+
-               |                                   |
-               v                                   v
-+--------------------------+              +--------------------------+
-| 2. Extract Product Details|              | 12. Vision Transformer   |
-| (Name, Desc, Qty, Unit)  |              |        (ViT → 768-dim)   |
-+--------------------------+              +--------------------------+
-               |                                   |
-               v                                   v
-+--------------------------+              +--------------------------+
-| 3. Remove Empty Desc Rows|              | 13. PCA Reduction         |
-|    (Drop empty rows)     |              |   → 512-dim Image Vector  |
-+--------------------------+              +--------------------------+
-               |                                   |
-               v                                   |
-+--------------------------+                       |
-|   5. Create New Features |                       |
-| (Length, Uniqueness,     |                       |
-|  Word Count, etc.)       |                       |
-+--------------------------+                       |
-               |                                   |
-               v                                   |
-+--------------------------+                       |
-|   6. Standardize Units   |                       |
-| (oz → kg, fl oz → L)     |                       |
-+--------------------------+                       |
-               |                                   |
-               v                                   |
-+--------------------------+                       |
-|     8. Outlier Removal   |                       |
-|     (Price > 200)        |                       |
-+--------------------------+                       |
-               |                                   |
-               v                                   |
-+--------------------------+                       |
-| 9. Log Transform Skewed  |                       |
-|     Features (price,     |                       |
-|     qty, length)         |                       |
-+--------------------------+                       |
-               |                                   |
-               v                                   |
-+--------------------------+                       |
-| 10. NLP Preprocessing &  |                       |
-|     Word2Vec Embedding   |                       |
-|     → Text Vector        |                       |
-+--------------------------+                       |
-               |                                   |
-               +---------------+-------------------+
-                               |
-                               v
-+-------------------------------------------------+
-|     13. Combine Text & Image Embeddings          |
-|         (Inner Join on sample_id)               |
-+-------------------------------------------------+
-                               |
-                               v
-+-------------------------------------------------+
-|            14. Train/Test Split Data             |
-+-------------------------------------------------+
-                               |
-                               v
-+-------------------------------------------------+
-|            15. Train LightGBM Model              |
-+-------------------------------------------------+
-                               |
-                               v
-+-------------------------------------------------+
-|                 Predicted Price                  |
-+-------------------------------------------------+
+# 🛒 Product Price Prediction Architecture Overview
 
+This document outlines the data processing and modeling pipeline for predicting product prices using both text and image data.
+
+---
+
+## 🏗️ Architecture Flow Diagram
+
+The process begins with two parallel data streams: **Text Data (catalog_content)** and **Image Data**.
+
+### **I. Text Data Stream (Catalog Content)**
+
+| Step | Process | Description |
+| :---: | :--- | :--- |
+| **1** | **Data Cleaning** | Handle **Nulls** and **Duplicates** in the raw text data. |
+| **2** | **Extract Product Details** | Parse text to extract structured details: **Name**, **Description**, **Quantity (Qty)**, and **Unit**. |
+| **3** | **Remove Empty Desc Rows**| Filter out rows where the product **Description** is missing or empty. |
+| **5** | **Create New Features** | Engineer features based on description: **Length**, **Uniqueness** score, and **Description Word Count**. |
+| **6** | **Standardize Units** | Convert disparate units to a standard format (e.g., **oz $\rightarrow$ kg**, **fl oz $\rightarrow$ L**). |
+| **8** | **Outlier Removal** | Clean numerical data by removing extreme outliers (e.g., **Price > 200**). |
+| **9** | **Log Transform Skewed Features** | Apply a **Log Transformation** to normalize highly skewed numerical features (**price**, **qty**, **length**). |
+| **10** | **NLP Preprocessing & Vectorization** | Perform standard NLP tasks and convert text to a numerical **Text Vector** using **Word2Vec**. |
+
+### **II. Image Data Stream**
+
+| Step | Process | Description |
+| :---: | :--- | :--- |
+| **11.i**| **Image Preprocessing** | Standardize images by **Resizing to 256x256** pixels. |
+| **11.ii**| **Vision Transformer (ViT)** | Pass preprocessed images through a **ViT** model to generate a **768-dimensional** feature vector. |
+| **11.iii**| **PCA Reduction** | Apply **Principal Component Analysis (PCA)** to reduce the vector dimension to a **512-dimensional Image Vector**. |
+
+---
+
+## 🧠 Model Training Pipeline
+
+| Step | Process | Description |
+| :---: | :--- | :--- |
+| **13** | **Combine Embeddings & Price** | Perform an **Inner Join** on the common identifier (`sample_id`) to merge the **Text Vector** and the **Image Vector** with the target **Price**. |
+| **14.i**| **Train/Test Split Data** | Divide the combined, preprocessed dataset into **training** and **testing** sets. |
+| **14.ii**| **Train LightGBM Model** | Train the final predictive model, **LightGBM**, using the combined feature set. |
+| **Output**| **Predicted Price** | The final output of the trained model. |
 
 
 ### 3.2 Model Components
