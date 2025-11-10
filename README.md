@@ -1,4 +1,4 @@
- Smart Product Pricing Solution Template
+ Smart Product Pricing 
  
 ---
 
